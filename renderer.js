@@ -258,8 +258,9 @@ function cliffEdgeNoise(nx, nz) {
 
 function buildBeveledHeightfieldGeometry(heights) {
   const s = params.segments;
-  const maxEffectiveSegments = 720;
-  const requestedSubdivisions = Math.max(1, Math.round(params.subdivideAmount));
+  const cuts = Math.max(0, Math.round(params.bevelAmount));
+  const maxEffectiveSegments = 960;
+  const requestedSubdivisions = Math.max(1, Math.round(params.subdivideAmount)) * Math.max(1, cuts + 1);
   const subdivisions = Math.max(1, Math.min(requestedSubdivisions, Math.floor(maxEffectiveSegments / s)));
   const n = s * subdivisions;
   const size = 10;
