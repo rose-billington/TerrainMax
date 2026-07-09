@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Terrain Generator</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/",
+      "simplex-noise": "./node_modules/simplex-noise/dist/esm/simplex-noise.js"
+    }
+  }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1923;
+      color: #c8d8e8;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 260px;
+      min-width: 260px;
+      display: flex;
+      flex-direction: column;
+      background: #131e2b;
+      border-right: 1px solid #1e3048;
+      overflow-y: auto;
+      padding: 14px 12px;
+      gap: 6px;
+    }
+
+    h1 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #7eb8d4;
+      margin-bottom: 6px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #4a7a9b;
+      margin-top: 10px;
+      margin-bottom: 2px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #1e3048;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #8aa8c0;
+    }
+
+    .control label span {
+      color: #c8d8e8;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      appearance: none;
+      background: #1e3048;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4a9fd4;
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 8px 0;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: filter 0.15s;
+    }
+    .btn:hover { filter: brightness(1.15); }
+    .btn:active { filter: brightness(0.9); }
+
+    #btn-generate {
+      background: #1a5c8a;
+      color: #d0eaff;
+      margin-top: 14px;
+    }
+
+    #btn-seed {
+      background: #1e3048;
+      color: #8aa8c0;
+      margin-top: 4px;
+    }
+
+    #btn-export {
+      background: #2a6e3f;
+      color: #b0f0c8;
+      margin-top: 4px;
+    }
+
+    #status {
+      font-size: 10px;
+      color: #4a7a9b;
+      text-align: center;
+      min-height: 14px;
+      margin-top: 4px;
+    }
+
+    /* Wireframe toggle */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #8aa8c0;
+      margin-top: 6px;
+    }
+
+    input[type="checkbox"] {
+      accent-color: #4a9fd4;
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+    }
+
+    /* ── Viewport ── */
+    #viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #viewport canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f192388;
+      color: #7eb8d4;
+      font-size: 13px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    #loading.hidden { opacity: 0; }
+  </style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <h1>Terrain Generator</h1>
+
+  <div class="section-title">Quality</div>
+
+  <div class="control">
+    <label>Triangle density <span id="val-segments">80</span></label>
+    <input type="range" id="segments" min="20" max="240" step="10" value="80" />
+  </div>
+
+  <div class="section-title">Noise</div>
+
+  <div class="control">
+    <label>Scale <span id="val-noiseScale">2.5</span></label>
+    <input type="range" id="noiseScale" min="0.5" max="8" step="0.1" value="2.5" />
+  </div>
+
+  <div class="control">
+    <label>Amplitude <span id="val-amplitude">5.0</span></label>
+    <input type="range" id="amplitude" min="1" max="12" step="0.5" value="5" />
+  </div>
+
+  <div class="control">
+    <label>Octaves <span id="val-octaves">5</span></label>
+    <input type="range" id="octaves" min="1" max="8" step="1" value="5" />
+  </div>
+
+  <div class="control">
+    <label>Persistence <span id="val-persistence">0.50</span></label>
+    <input type="range" id="persistence" min="0.1" max="0.9" step="0.05" value="0.5" />
+  </div>
+
+  <div class="control">
+    <label>Lacunarity <span id="val-lacunarity">2.0</span></label>
+    <input type="range" id="lacunarity" min="1.2" max="4" step="0.1" value="2.0" />
+  </div>
+
+  <div class="section-title">Island Shape</div>
+
+  <div class="control">
+    <label>Island size <span id="val-islandSize">0.72</span></label>
+    <input type="range" id="islandSize" min="0.1" max="1.0" step="0.01" value="0.72" />
+  </div>
+
+  <div class="control">
+    <label>Coastline roughness <span id="val-islandRoughness">0.55</span></label>
+    <input type="range" id="islandRoughness" min="0.0" max="1.2" step="0.05" value="0.55" />
+  </div>
+
+  <div class="section-title">Terracing</div>
+
+  <div class="control">
+    <label>Terrace levels <span id="val-terraceCount">7</span></label>
+    <input type="range" id="terraceCount" min="2" max="16" step="1" value="7" />
+  </div>
+
+  <div class="section-title">Edge Bevel</div>
+
+  <div class="control">
+    <label>Bevel cuts <span id="val-bevelAmount">2</span></label>
+    <input type="range" id="bevelAmount" min="0" max="8" step="1" value="2" />
+  </div>
+
+  <div class="control">
+    <label>Bevel scale <span id="val-bevelScale">0.30</span></label>
+    <input type="range" id="bevelScale" min="0" max="0.95" step="0.01" value="0.30" />
+  </div>
+
+  <div class="control">
+    <label>Subdivide amount <span id="val-subdivideAmount">3</span></label>
+    <input type="range" id="subdivideAmount" min="1" max="8" step="1" value="3" />
+  </div>
+
+  <div class="control">
+    <label>Cliff randomness <span id="val-cliffRandomness">0.18</span></label>
+    <input type="range" id="cliffRandomness" min="0" max="0.8" step="0.01" value="0.18" />
+  </div>
+
+  <div class="section-title">Display</div>
+
+  <div class="toggle-row">
+    <span>Shade smooth</span>
+    <input type="checkbox" id="shadeSmooth" />
+  </div>
+
+  <div class="toggle-row">
+    <span>Wireframe overlay</span>
+    <input type="checkbox" id="wireframe" checked />
+  </div>
+
+  <button class="btn" id="btn-generate">Generate</button>
+  <button class="btn" id="btn-seed">New Random Seed</button>
+  <button class="btn" id="btn-export">Export GLB</button>
+  <div id="status"></div>
+</aside>
+
+<div id="viewport">
+  <div id="loading">Building terrain…</div>
+</div>
+
+<script type="module" src="renderer.js"></script>
+</body>
+</html>

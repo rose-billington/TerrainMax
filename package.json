@@ -1,0 +1,14 @@
+{
+  "name": "terrain-generator",
+  "version": "1.0.0",
+  "description": "Terraced terrain generator with GLTF export",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^28.3.3",
+    "simplex-noise": "^4.0.1",
+    "three": "^0.160.0"
+  }
+}
